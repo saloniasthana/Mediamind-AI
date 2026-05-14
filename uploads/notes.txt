@@ -1,0 +1,1 @@
+MediaMind AI supports semantic document question answering. It summarizes uploaded material and helps users find timestamps.
