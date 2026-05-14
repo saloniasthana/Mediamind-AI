@@ -26,7 +26,7 @@ docker compose up --build
 ```
 
 Frontend: http://localhost:5173  
-Backend docs: http://localhost:8000/docs
+Backend docs: https://mediamind-ai-1.onrender.com/docs
 
 ## Run Without Docker
 
