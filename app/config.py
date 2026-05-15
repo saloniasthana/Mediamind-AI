@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4o-mini"
     groq_api_key: str | None = None
     groq_model: str = "llama-3.1-8b-instant"
+    groq_verify_ssl: bool = True
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     model_config = {"env_file": ".env", "extra": "ignore"}

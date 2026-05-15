@@ -154,6 +154,7 @@ def test_groq_answer_parses_chat_completion(monkeypatch):
     class FakeSettings:
         groq_api_key = "test-key"
         groq_model = "test-model"
+        groq_verify_ssl = True
 
     monkeypatch.setattr(qa, "get_settings", lambda: FakeSettings())
     monkeypatch.setattr(qa.httpx, "post", lambda *args, **kwargs: FakeResponse())

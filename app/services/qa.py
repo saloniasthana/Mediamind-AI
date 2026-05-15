@@ -1,3 +1,6 @@
+import logging
+import re
+
 import httpx
 
 from app.database import MongoStore
@@ -7,6 +10,7 @@ from app.services.text import keyword_score, summarize_text, tokenize
 
 
 MAX_CONTEXT_CHARS = 16000
+logger = logging.getLogger(__name__)
 
 
 def _build_prompt(question: str, context: str) -> str:
@@ -46,8 +50,23 @@ def _context_from_document(db: MongoStore, document_id: int | None, matches) -> 
 
 
 def _local_answer(question: str, context: str) -> str:
-    sentences = [line.strip() for line in context.replace("\n", ". ").split(".") if line.strip()]
+    context_without_labels = re.sub(r"File: [^\n]+", "", context)
+    cleaned = re.sub(r"\s+", " ", context_without_labels)
+    sentences = [line.strip() for line in re.split(r"(?<=[.!?])\s+", cleaned) if line.strip()]
     query_terms = set(tokenize(question))
+    if not sentences:
+        return "I could not find relevant content in the uploaded files."
+
+    question_lower = question.lower()
+    if question_lower.startswith(("what is", "what are", "define", "explain")):
+        for sentence in sentences:
+            lower = sentence.lower()
+            if query_terms and any(term in lower for term in query_terms):
+                next_index = sentences.index(sentence) + 1
+                extra = sentences[next_index] if next_index < len(sentences) else ""
+                answer = sentence if not extra else f"{sentence} {extra}"
+                return "Based on the uploaded content: " + answer
+
     useful = []
     for sentence in sentences:
         lower = sentence.lower()
@@ -114,6 +133,7 @@ def _groq_answer(question: str, context: str) -> str | None:
             "max_tokens": 700,
         },
         timeout=45,
+        verify=settings.groq_verify_ssl,
     )
     response.raise_for_status()
     data = response.json()
@@ -141,7 +161,8 @@ def answer_question(db: MongoStore, question: str, document_id: int | None = Non
     if context.strip():
         try:
             answer = _groq_answer(question, context) or _openai_answer(question, context) or _local_answer(question, context)
-        except Exception:
+        except Exception as exc:
+            logger.warning("AI provider failed; using local fallback: %s", exc)
             answer = _local_answer(question, context)
     else:
         answer = "I could not find relevant content in the uploaded files."
